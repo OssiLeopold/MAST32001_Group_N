@@ -1,6 +1,35 @@
-# Read in the data (using the actual data now in the beginning just to get a better idea of what is actually supposed to happen)
-# Will switch to generated data at some point
-X = read.table("/home/elmer/R/computational_statistics/group_work/TASK1/time_series_data.txt")
+
+# Function to simulate autoregressive observations according to given ar and ma coefficients.
+generate_arma = function(T, ar = numeric(0), ma = numeric(0)) {
+  # Moving-average generation coefficients.
+  psi = ARMAtoMA(ar = ar, ma = ma, lag.max = 2000)
+  
+  # Standard deviation for Gaussian innovation.
+  sd_innov = 1 / sqrt(1 + sum(psi^2))
+  
+  # Generate the random autoregressive data.
+  arima.sim(model = list(ar = ar, ma = ma), n = T, rand.gen = function(n) rnorm(n, sd = sd_innov))
+}
+
+# function to generate data for testing. T is the chosen sample size.
+generate_signals = function(T) {
+  s1 = generate_arma(ar = 0.6, ma = c(0, -0.4))
+  s2 = generate_arma(ar = c(0.4, 0.1, 0.3), ma = c(0.2, 0.4))
+  s3 = generate_arma(ar = 0.4)
+  s4 = generate_arma(ma = c(0.5, 0.3, 0.1, 0.2))
+  s5 = generate_arma(ar = c(0.1, 0.3))
+  
+  signals = cbind(s1, s2, s3, s4, s5)
+  
+  return(signals)
+}
+
+# function to generate noise according to setting 1: Gaussian white noise.
+generate_noise = function(T) {
+  noise = matrix(rnorm(T * 5), nrow = T, ncol = 5)
+  
+  return(noise)
+}
 
 # compute the amount of observations and variables
 N = nrow(X)
@@ -80,3 +109,4 @@ L_SOBI = Reduce('+', lapply(D_SOBI, function(D){
 }))
 
 L_SOBI
+
