@@ -11,7 +11,7 @@ generate_arma = function(T, ar = numeric(0), ma = numeric(0)) {
   arima.sim(model = list(ar = ar, ma = ma), n = T, rand.gen = function(n) rnorm(n, sd = sd_innov))
 }
 
-# function to generate data for testing. T is the chosen sample size.
+# Function to generate signals for testing. T is the chosen sample size.
 generate_signals = function(T) {
   s1 = generate_arma(ar = 0.6, ma = c(0, -0.4))
   s2 = generate_arma(ar = c(0.4, 0.1, 0.3), ma = c(0.2, 0.4))
@@ -24,16 +24,51 @@ generate_signals = function(T) {
   return(signals)
 }
 
-# function to generate noise according to setting 1: Gaussian white noise.
+# Function to generate noise according to setting 1: Gaussian white noise.
 generate_noise = function(T) {
   noise = matrix(rnorm(T * 5), nrow = T, ncol = 5)
   
   return(noise)
 }
 
-# compute the amount of observations and variables
-N = nrow(X)
-p = ncol(X)
+# Function for generating random observations for testing.
+generate_data = function(T, setting = 1) {
+  signals = generate_signals(T)
+  noise = generate_noise(T)
+  
+  X = cbind(signals, noise)
+  
+  return(X)
+}
+
+# Function for standardizing the data.
+standardize_data = function(X){
+  # Center data.
+  Xc = scale(X, center=TRUE, scale=FALSE)
+  
+  # Compute lag-zero covariance matrix.
+  S0 = cov(Xc)
+  
+  # Perform eigen decomposition.
+  eigen = eigen(S0)
+  Q = eigen$vectors
+  L = eigen$values
+  L_inv_sqrt = sqrt(solve(L))
+  
+  # Compute ZCA whitening matrix.
+  W = Q %*% L_inv_sqrt %*% t(L_inv_sqrt)
+  
+  # Numerical verification
+  check = W %*% S0 %*% t(W)
+  if (round(check, 1e-10) != diag(ncol(X))){
+    print("Warning! Significantly high magnitude off-diagonals found while whitening.")
+  }
+  
+  # Compute standardized data.
+  X_st = Xc %*% W
+  
+  return(X_st)
+}
 
 # center the data such that each column has zero mean
 Xc = scale(X, center=TRUE, scale=FALSE)
