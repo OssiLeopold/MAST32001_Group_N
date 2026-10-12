@@ -36,10 +36,47 @@ lag_cov = function(X_st, tau){
   return(C_sym)
 }
 
-#
+# Compute lagged covariance matrices at 20 different lags
 tau = 1:20
 S_tau = lapply(tau, function(tau){
   lag_cov(X_st, tau)
 })
 
-eigen(S_tau[[5]])
+# use AMUSE first
+eigen_array = lapply(S_tau, function(S_tau){
+  eigen(S_tau, symmetric=TRUE)
+})
+
+# compute the orthogonal matrix U for a range of lags
+U_AMUSE_array = lapply(eigen_array, function(eigen_array){
+  eigen_array$vectors
+})
+
+# compute U for range of taus
+D_AMUSE = lapply(tau, function(i) {
+  t(U_AMUSE_array[[i]]) %*% S_tau[[i]] %*% U_AMUSE_array[[i]]
+})
+
+L_AMUSE_array = lapply(tau, function(i){
+  diag(t(U_AMUSE_array[[i]]) %*% S_tau[[i]] %*% U_AMUSE_array[[i]])**2
+})
+
+L_AMUSE_array
+
+# Use SOBI
+library(JADE)
+
+S_tau_array = simplify2array(S_tau)
+
+result = JADE::frjd(S_tau_array)
+U_SOBI = result$V
+
+D_SOBI = lapply(tau, function(i) {
+  U_SOBI %*% S_tau[[i]] %*% t(U_SOBI)
+})
+
+L_SOBI = Reduce('+', lapply(D_SOBI, function(D){
+  diag(D)**2
+}))
+
+L_SOBI
