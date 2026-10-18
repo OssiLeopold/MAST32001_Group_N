@@ -59,3 +59,73 @@ store_Z = FALSE) # control if labels are saved at every iteration (if so, it use
 # Only will store the matrix in Part D where we need posterior uncertainty about allocations (store_Z = TRUE).
 # Otherwise the n_iter by n matrix is big and uses a lot of memory. Default is "(store_Z = FALSE)"
 
+# The loop:
+  for (it in 1:n_iter) { # n_iter times
+
+# Update labels:
+    dens1 <- pi * dnorm(y, mean = mu1, sd = sqrt(sigma2)) # prior probability (pi) times normal density at y_i
+    dens2 <- (1 - pi) * dnorm(y, mean = mu2, sd = sqrt(sigma2))
+    prob1 <- dens1 / (dens1 + dens2) # probability that the observation belongs to component 1
+    Z <- ifelse(runif(n) < prob1, 1L, 2L) # if the uniform random number is less than prob1, assign label 1, else assign label 2
+
+# Update means:
+    n1 <- sum(Z == 1)
+    n2 <- n - n1
+    S1 <- sum(y[Z == 1])
+    S2 <- sum(y[Z == 2])
+# Count how many observations are in each component and sum their values.
+
+# Conjugate normal update:
+    if (n1 > 0) {
+      prec1 <- n1 / sigma2 + 1 / s0^2 # posterior precision = data precision + prior precision
+      var1 <- 1 / prec1
+      mean1 <- var1 * (S1 / sigma2 + m0 / s0^2) # posterior mean = data mean and prior mean's precision-weighted average
+      mu1 <- rnorm(1, mean1, sqrt(var1))
+    } else {
+      mu1 <- rnorm(1, m0, s0) # if no observations in component 1, draw from the prior
+    }
+# Same logic for component 2.
+    if (n2 > 0) {
+      prec2 <- n2 / sigma2 + 1 / s0^2
+      var2 <- 1 / prec2
+      mean2 <- var2 * (S2 / sigma2 + m0 / s0^2)
+      mu2 <- rnorm(1, mean2, sqrt(var2))
+    } else {
+      mu2 <- rnorm(1, m0, s0)
+    }
+
+# Update mixing proportion:
+    pi <- rbeta(1, a + n1, b + n2) # number of observations in component 1 = n1
+    # number of observations in component 2 = n2
+
+# Update variance:
+    SSE <- sum((y - ifelse(Z == 1, mu1, mu2))^2) # sum of squared differences between each data point (y) and its predicted mean mu1or2.
+    alpha_n <- alpha0 + n / 2
+    beta_n <- beta0 + SSE / 2
+    sigma2 <- 1 / rgamma(1, shape = alpha_n, rate = beta_n) # inverse gamma draw
+# The inverse-gamma is the conjugate prior for the variance of a normal distribution.
+
+# Storing and returning:
+    samples[it, ] <- c(mu1, mu2, pi, sigma2)
+    if (store_Z) Z_store[it, ] <- Z # store the current draw
+  }
+
+# Throw the burn iterations, return the rest:
+  keep <- (burn + 1):n_iter
+  list(
+    samples = samples[keep, , drop = FALSE],
+    Z = if (store_Z) Z_store[keep, , drop = FALSE] else NULL
+  )
+}
+
+# Our guesses (priors) are perfect mathematical matches (conjugate).
+# Normal (bell curve) for the means, beta for guessing percentages, inverse gamma for the variance.
+# Therefore, the computer doesn't need to guess for answers, it can draw from the distributions.
+# There is no need to use the slow "guess and check" method of the Metropolis-Hastings steps.
+
+# Before staring the Gibbs sampler, K-means ensured the divided components had data in them.
+# The math would work anyways, but it stabilizes the first few iterations and gains speed.
+
+# Since the computer starts with a random guess, the unreliable first guesses are thrown away.
+# 2000 warm up iterations are enough to get the algorithm on a right track (conservative).
+# However, it is still a quick algorithm.
