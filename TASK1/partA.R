@@ -20,7 +20,7 @@ generate_signals = function(T) {
   s2 = generate_arma(T, ar = c(0.4, 0.1, 0.3), ma = c(0.2, 0.4))
   s3 = generate_arma(T, ar = 0.4)
   s4 = generate_arma(T, ma = c(0.5, 0.3, 0.1, 0.2))
-  s5 = generate_arma(T, ar = c(0.1, 0.3))
+  s5 = generate_arma(T, ar = c(0.1, 0.1, 0.3))
   
   signals = cbind(s1, s2, s3, s4, s5)
   
@@ -93,11 +93,9 @@ AMUSE = function(SIGMA_tau){
 
   # Diagonalize lagged covariance matrices to find U  
   U = lapply(eigen_tau, function(eigen_tau) {eigen_tau$vectors})
-  
-  #D = lapply(tau, function(i) {t(U[[i]]) %*% SIGMA_tau[[i]] %*% U[[i]]})
+  LAMBDA = lapply(eigen_tau, function(eigen_tau) {eigen_tau$values})[[1]]
+  LAMBDA = rev(sort(LAMBDA**2))
 
-  LAMBDA = lapply(tau, function(i) {diag(t(U[[i]]) %*% SIGMA_tau[[i]] %*% U[[i]])**2})[[1]]
-  
   return(list(U=U[[1]], LAMBDA=LAMBDA))
 }
 
@@ -109,11 +107,11 @@ SOBI = function(SIGMA_tau) {
   result = JADE::frjd(SIGMA_tau_array, maxiter = 1000)
   U = result$V
   
-  D = lapply(tau, function(i) {U %*% S_tau[[i]] %*% t(U)})
+  D = lapply(tau, function(i) {t(U) %*% S_tau[[i]] %*% U})
   
   LAMBDA = Reduce('+', lapply(D, function(D) {diag(D)**2}))
   LAMBDA = rev(sort(LAMBDA))
-  
+
   return(list(U=U, LAMBDA=LAMBDA))
 }
 
@@ -158,9 +156,9 @@ stationary_bootstrap = function(X, LE) {
 }
 
 # Function for computing the f0 ladle quantity.
-compute_f0 = function(U, U_boot){
+compute_f02 = function(U, U_boot){
   f0 = sapply(1:10, function(k) {
-    Bk = t(U)[, 1:k, drop = FALSE]
+    Bk = U[, 1:k, drop = FALSE]
     
     mean(sapply(U_boot, function(Ub) {
       Bk_boot = Ub[, 1:k, drop = FALSE]
@@ -171,17 +169,35 @@ compute_f0 = function(U, U_boot){
   return(f0)
 }
 
-subspace_distance <- function(G1, G2, k) {
-  if (k == 0) return(0)
+compute_f0 <- function(U, U_boot) {
+  p <- ncol(U)
   
-  Q1 <- qr.Q(qr(G1[, 1:k, drop = FALSE]))
-  Q2 <- qr.Q(qr(G2[, 1:k, drop = FALSE]))
+  f0 <- c(0, sapply(1:(p-1), function(k) {
+    Bk <- U[, 1:k, drop = FALSE]
+    
+    mean(sapply(U_boot, function(Ub) {
+      Bk_boot <- Ub[, 1:k, drop = FALSE]
+      
+      1 - abs(det(t(Bk) %*% Bk_boot))
+    }))
+  }))
   
-  1 - abs(det(crossprod(Q1, Q2)))
+  return(f0)
 }
 
-repetitions = 100
-T = 2000
+# Orthonormalize unmixing matrices and calculate crossproduct determinant to get
+# an estimation of ladle quantity f.
+subspace_distance = function(G1, G2, k) {
+  
+  Q1 = qr.Q(qr(G1[, 1:k, drop = FALSE]))
+  Q2 = qr.Q(qr(G2[, 1:k, drop = FALSE]))
+  
+  return(1 - abs(det(t(Q1) %*% Q2)))
+}
+
+repetitions = 10
+tau_AMUSE = c(1)
+T = 1000
 B = 200
 L = 20
 
@@ -216,7 +232,7 @@ for (rep in 1:repetitions){
   })
   
   # Apply AMUSE.
-  AMUSE_result = AMUSE(S_tau)
+  AMUSE_result = AMUSE(S_tau[tau_AMUSE])
   U_AMUSE = AMUSE_result$U
   LAMBDA_AMUSE = AMUSE_result$LAMBDA
   
@@ -245,7 +261,7 @@ for (rep in 1:repetitions){
       lag_cov(X_boot_st, tau)
     })
     
-    AMUSE_boot = AMUSE(S_boot_tau)
+    AMUSE_boot = AMUSE(S_boot_tau[tau_AMUSE])
     SOBI_boot = SOBI(S_boot_tau)
     
     U_AMUSE_boot[[b]] = AMUSE_boot$U
@@ -255,34 +271,28 @@ for (rep in 1:repetitions){
   Gamma_AMUSE = W %*% U_AMUSE
   Gamma_SOBI = W %*% U_SOBI
   
-  Gamma_AMUSE_boot <- Map(function(W, U) {
-    W %*% U
-  }, W_boot, U_AMUSE_boot)
-  
-  Gamma_SOBI_boot <- Map(function(W, U) {
-    W %*% U
-  }, W_boot, U_SOBI_boot)
+  Gamma_AMUSE_boot = Map(function(W, U) {W %*% U}, W_boot, U_AMUSE_boot)
+  Gamma_SOBI_boot = Map(function(W, U) {W %*% U}, W_boot, U_SOBI_boot)
   
   # Compute ladle quantity f for both AMUSE and SOBI.
   #f0_AMUSE = compute_f0(U_AMUSE, U_AMUSE_boot)
   p = 10
   k = 0:9
   
-  f0_AMUSE <- sapply(k, function(k) {
+  f0_AMUSE = sapply(k, function(k) {
     mean(sapply(Gamma_AMUSE_boot, function(Gb) {
-      subspace_distance(Gamma_AMUSE, Gb, k)
-    }))
-  })
+    subspace_distance(Gamma_AMUSE, Gb, k)
+    }))})
   
   f_AMUSE_fixed[[rep]] = f0_AMUSE / (1 + sum(f0_AMUSE))
   
-  #f0_SOBI = compute_f0(U_SOBI, U_SOBI_boot)
+  f0_SOBI = compute_f0(U_SOBI, U_SOBI_boot)
   
-  f0_SOBI <- sapply(k, function(k) {
-    mean(sapply(Gamma_SOBI_boot, function(Gb) {
-      subspace_distance(Gamma_SOBI, Gb, k)
-    }))
-  })
+  #f0_SOBI = sapply(k, function(k) {
+  #  mean(sapply(Gamma_SOBI_boot, function(Gb) {
+  #  subspace_distance(Gamma_SOBI, Gb, k)
+  #  }))
+  #})
   
   f_SOBI_fixed[[rep]] = f0_SOBI / (1 + sum(f0_SOBI))
   
@@ -297,7 +307,7 @@ for (rep in 1:repetitions){
   
   # Stationary bootstrap.
   for (b in 1:B){
-    X_boot = stationary_bootstrap(X, L)
+    X_boot = stationary_bootstrap(X , L)
     result = standardize_data(X_boot)
     X_boot_st = result$X_st
     W_boot[[b]] = result$W
@@ -306,41 +316,35 @@ for (rep in 1:repetitions){
       lag_cov(X_boot_st, tau)
     })
     
-    AMUSE_boot = AMUSE(S_boot_tau)
+    AMUSE_boot = AMUSE(S_boot_tau[tau_AMUSE])
     SOBI_boot = SOBI(S_boot_tau)
     
     U_AMUSE_boot[[b]] = AMUSE_boot$U
     U_SOBI_boot[[b]] = SOBI_boot$U
   }
   
-  Gamma_AMUSE_boot <- Map(function(W, U) {
-    W %*% U
-  }, W_boot, U_AMUSE_boot)
+  Gamma_AMUSE_boot = Map(function(W, U) {W %*% U}, W_boot, U_AMUSE_boot)
   
-  Gamma_SOBI_boot <- Map(function(W, U) {
-    W %*% U
-  }, W_boot, U_SOBI_boot)
+  Gamma_SOBI_boot = Map(function(W, U) {W %*% U}, W_boot, U_SOBI_boot)
   
   # Compute ladle quantity f for both AMUSE and SOBI.
   p = 10
   k = 0:9
   
   #f0_AMUSE = compute_f0(U_AMUSE, U_AMUSE_boot)
-  f0_AMUSE <- sapply(k, function(k) {
+  f0_AMUSE = sapply(k, function(k) {
     mean(sapply(Gamma_AMUSE_boot, function(Gb) {
-      subspace_distance(Gamma_AMUSE, Gb, k)
+    subspace_distance(Gamma_AMUSE, Gb, k)
     }))
   })
-  
   f_AMUSE_stationary[[rep]] = f0_AMUSE / (1 + sum(f0_AMUSE))
   
-  #f0_SOBI = compute_f0(U_SOBI, U_SOBI_boot)
-  f0_SOBI <- sapply(k, function(k) {
-    mean(sapply(Gamma_SOBI_boot, function(Gb) {
-      subspace_distance(Gamma_SOBI, Gb, k)
-    }))
-  })
-  
+  f0_SOBI = compute_f0(U_SOBI, U_SOBI_boot)
+  #f0_SOBI = sapply(k, function(k) {
+  #  mean(sapply(Gamma_SOBI_boot, function(Gb) {
+  #  subspace_distance(t(Gamma_SOBI), Gb, k)
+  #  }))
+  #})
   f_SOBI_stationary[[rep]] = f0_SOBI / (1 + sum(f0_SOBI))
 
   # Compute ladle quantity g for both AMUSE and SOBI.
@@ -349,9 +353,9 @@ for (rep in 1:repetitions){
   
 }
 
-plot(1:10, Reduce("+", g_SOBI_stationary)/repetitions, type = "l", ylim=c(0,0.7))
-lines(1:10, Reduce("+", phi_SOBI)/repetitions, type="l")
-lines(1:10, Reduce("+", f_SOBI_stationary)/repetitions, type="l")
+plot(0:9, Reduce("+", g_SOBI_stationary)/repetitions, type = "l", ylim=c(0,0.7), col="green")
+lines(0:9, Reduce("+", phi_SOBI)/repetitions, type="l", col="red")
+lines(0:9, Reduce("+", f_SOBI_stationary)/repetitions, type="l", col="black")
 
 
 
