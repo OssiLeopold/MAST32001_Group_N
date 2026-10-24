@@ -40,7 +40,7 @@ generate_data = function(T) {
   noise = generate_noise(T)
   
   X = cbind(signals, noise)
-  colnames(X) <- paste0("V", 1:10)
+  colnames(X) = paste0("V", 1:10)
   
   return(X)
 }
@@ -156,7 +156,7 @@ stationary_bootstrap = function(X, LE) {
 }
 
 # Function for computing the f0 ladle quantity.
-compute_f0 <- function(U, U_boot) {
+compute_f0 = function(U, U_boot) {
   p = ncol(U)
   
   f0 = c(0, sapply(1:(p-1), function(k) {
@@ -173,42 +173,51 @@ compute_f0 <- function(U, U_boot) {
 }
 
 repetitions = 1
-tau_AMUSE = c(1)
-T = 500
+tau_AMUSE = c(2)
+T = 2000
 B = 200
 Lengths = c(10, 20, 40)
 
-SOBI_S_10_40 = matrix(ncol=3, nrow=T, 0)
-SOBI_F_10_40 = matrix(ncol=3, nrow=T, 0)
-AMUSE_S_10_40 = matrix(ncol=3, nrow=T, 0)
-AMUSE_F_10_40 = matrix(ncol=3, nrow=T, 0)
+SOBI_S_10_40 = matrix(ncol=3, nrow=repetitions, 0)
+SOBI_F_10_40 = matrix(ncol=3, nrow=repetitions, 0)
+AMUSE_S_10_40 = matrix(ncol=3, nrow=repetitions, 0)
+AMUSE_F_10_40 = matrix(ncol=3, nrow=repetitions, 0)
 
-for (L in Lengths){
+phi_SOBI = vector("list",3)
+phi_AMUSE = vector("list",3)
 
-  phi_AMUSE = replicate(repetitions, numeric(10), simplify = FALSE)
-  f_AMUSE_F = replicate(repetitions, numeric(10), simplify = FALSE)
-  g_AMUSE_F = replicate(repetitions, numeric(10), simplify = FALSE)
-  
-  phi_SOBI = replicate(repetitions, numeric(10), simplify = FALSE)
-  f_SOBI_F = replicate(repetitions, numeric(10), simplify = FALSE)
-  g_SOBI_F = replicate(repetitions, numeric(10), simplify = FALSE)
-  
-  f_AMUSE_S = replicate(repetitions, numeric(10), simplify = FALSE)
-  g_AMUSE_S = replicate(repetitions, numeric(10), simplify = FALSE)
-  
-  f_SOBI_S = replicate(repetitions, numeric(10), simplify = FALSE)
-  g_SOBI_S = replicate(repetitions, numeric(10), simplify = FALSE)
-  
+f_SOBI_S = vector("list",3)
+g_SOBI_S = vector("list",3)
+
+f_SOBI_F = vector("list",3)
+g_SOBI_F = vector("list",3)
+
+f_AMUSE_S = vector("list",3)
+g_AMUSE_S = vector("list",3)
+
+f_AMUSE_F = vector("list",3)
+g_AMUSE_F = vector("list",3)
+
+for (l in 1:3){
+
   for (r in 1:repetitions){
-  
+    print(l)
+    print(r)
+    print(" ")
+    
+    L = Lengths[l]
+
     # Generate data.
-    X = generate_data(T)
-  
+    #X = generate_data(T)
+
+    # Read in data
+    X = read.table("/home/elmer/R/computational_statistics/group_work/TASK1/time_series_data.txt", header = FALSE)
+    
     # Standardize data.
     X_st = standardize_data(X)
     
-    # Compute lagged covariance matrices at 20 different lags.
-    tau = 1:12
+    # Compute lagged covariance matrices at 12 different lags.
+    tau = 1:6
     S_tau = lapply(tau, function(tau){
       lag_cov(X_st, tau)
     })
@@ -224,8 +233,8 @@ for (L in Lengths){
     LAMBDA_SOBI = SOBI_result$LAMBDA
     
     # Compute ladle quantity phi for both methods.
-    phi_AMUSE[[r]] = LAMBDA_AMUSE / (1 + sum(LAMBDA_AMUSE))
-    phi_SOBI[[r]] = LAMBDA_SOBI / (1 + sum(LAMBDA_SOBI))
+    phi_AMUSE[[l]] = LAMBDA_AMUSE / (1 + sum(LAMBDA_AMUSE))
+    phi_SOBI[[l]] = LAMBDA_SOBI / (1 + sum(LAMBDA_SOBI))
     
     # Initialize empty arrays to be populated with bootstrap sample results.
     U_AMUSE_boot = replicate(B, matrix(0, 10, 10), simplify = FALSE)
@@ -249,18 +258,14 @@ for (L in Lengths){
     
     # Compute ladle quantity f for both AMUSE and SOBI.
     f0_AMUSE = compute_f0(U_AMUSE, U_AMUSE_boot)
-    p = 10
-    k = 0:9
-    
-    f_AMUSE_F[[r]] = f0_AMUSE / (1 + sum(f0_AMUSE))
+    f_AMUSE_F[[l]] = f0_AMUSE / (1 + sum(f0_AMUSE))
     
     f0_SOBI = compute_f0(U_SOBI, U_SOBI_boot)
-    
-    f_SOBI_F[[r]] = f0_SOBI / (1 + sum(f0_SOBI))
+    f_SOBI_F[[l]] = f0_SOBI / (1 + sum(f0_SOBI))
     
     # Compute ladle quantity g for both AMUSE and SOBI.
-    g_AMUSE_F[[r]] = f_AMUSE_F[[r]] + phi_AMUSE[[r]]
-    g_SOBI_F[[r]] = f_SOBI_F[[r]] + phi_SOBI[[r]]
+    g_AMUSE_F[[l]] = f_AMUSE_F[[l]] + phi_AMUSE[[l]]
+    g_SOBI_F[[l]] = f_SOBI_F[[l]] + phi_SOBI[[l]]
     
     # Initialize empty arrays to be populated with bootstrap sample results.
     U_AMUSE_boot = replicate(B, matrix(0, 10, 10), simplify = FALSE)
@@ -283,32 +288,101 @@ for (L in Lengths){
     }
     
     # Compute ladle quantity f for both AMUSE and SOBI.
-    p = 10
-    k = 0:9
-    
     f0_AMUSE = compute_f0(U_AMUSE, U_AMUSE_boot)
-  
-    f_AMUSE_S[[r]] = f0_AMUSE / (1 + sum(f0_AMUSE))
+
+    f_AMUSE_S[[l]] = f0_AMUSE / (1 + sum(f0_AMUSE))
     
     f0_SOBI = compute_f0(U_SOBI, U_SOBI_boot)
-  
-    f_SOBI_S[[r]] = f0_SOBI / (1 + sum(f0_SOBI))
+    f_SOBI_S[[l]] = f0_SOBI / (1 + sum(f0_SOBI))
   
     # Compute ladle quantity g for both AMUSE and SOBI.
-    g_AMUSE_S[[r]] = f_AMUSE_S[[r]] + phi_AMUSE[[r]]
-    g_SOBI_S[[r]] = f_SOBI_S[[r]] + phi_SOBI[[r]]
+    g_AMUSE_S[[l]] = f_AMUSE_S[[l]] + phi_AMUSE[[l]]
+    g_SOBI_S[[l]] = f_SOBI_S[[l]] + phi_SOBI[[l]]
+  
+    SOBI_S_10_40[r,l] = which.min(g_SOBI_S[[l]])
+    SOBI_F_10_40[r,l] = which.min(g_SOBI_F[[l]])
+    
+    AMUSE_S_10_40[r,l] = which.min(g_AMUSE_S[[l]])
+    AMUSE_F_10_40[r,l] = which.min(g_AMUSE_F[[l]])
   }
-  
-  
-  
 }
 
-#par(mar = c(5, 4, 4, 12))
-#plot(0:9, Reduce("+", g_SOBI_S)/repetitions, type = "o", ylim=c(0,0.7), col="green",
-#     xlab="Component", ylab="Criterion")
-#lines(0:9, Reduce("+", phi_SOBI)/repetitions, type="o", col="red")
-#lines(0:9, Reduce("+", f_SOBI_S)/repetitions, type="o", col="black")
+# 
 
-#legend("right", inset = c(-0.2, 0), title="Ladle quantities",
-#       legend = expression(italic(f), italic(phi), italic(g)),
-#       col = c("black", "red", "green"), lty = 1, bty = "n", xpd=TRUE)
+#write.csv(SOBI_S_10_40, "output/obs_SOBI_S_10_40.csv", row.names = FALSE)
+#write.csv(SOBI_F_10_40, "output/obs_SOBI_F_10_40.csv", row.names = FALSE)
+#write.csv(AMUSE_S_10_40, "output/obs_AMUSE_S_10_40.csv", row.names = FALSE)
+#write.csv(AMUSE_F_10_40, "output/obs_AMUSE_F_10_40.csv", row.names = FALSE)
+
+#write.csv(SOBI_S_10_40, "output/SOBI_S_10_40.csv", row.names = FALSE)
+#write.csv(SOBI_F_10_40, "output/SOBI_F_10_40.csv", row.names = FALSE)
+#write.csv(AMUSE_S_10_40, "output/AMUSE_S_10_40.csv", row.names = FALSE)
+#write.csv(AMUSE_F_10_40, "output/AMUSE_F_10_40.csv", row.names = FALSE)
+
+par(mfrow = c(2, 2), mar = c(2.5, 4, 2, 0.5), oma = c(2, 1, 1, 10))
+plot(0:9, g_SOBI_S[[1]], type="l", lty="solid", ylim=c(0,0.25), col="green",
+     main="SOBI stationary", xlab="", ylab="Criterion")
+lines(0:9, phi_SOBI[[1]], type="l", lty="solid", col="red")
+lines(0:9, f_SOBI_S[[1]], type="l", lty="solid", col="black")
+
+lines(0:9, g_SOBI_S[[2]], type="l", lty="dashed", col="green")
+lines(0:9, phi_SOBI[[2]], type="l", lty="dashed", col="red")
+lines(0:9, f_SOBI_S[[2]], type="l", lty="dashed", col="black")
+
+lines(0:9, g_SOBI_S[[3]], type="l", lty="dotted", col="green")
+lines(0:9, phi_SOBI[[3]], type="l", lty="dotted", col="red")
+lines(0:9, f_SOBI_S[[3]], type="l", lty="dotted", col="black")
+
+plot(0:9, g_SOBI_F[[1]], type="l", lty="solid", ylim=c(0,0.25), col="green",
+     main="SOBI fixed", xlab="", ylab="")
+lines(0:9, phi_SOBI[[1]], type="l", lty="solid", col="red")
+lines(0:9, f_SOBI_F[[1]], type="l", lty="solid", col="black")
+
+lines(0:9, g_SOBI_F[[2]], type="l", lty="dashed", col="green")
+lines(0:9, phi_SOBI[[2]], type="l", lty="dashed", col="red")
+lines(0:9, f_SOBI_F[[2]], type="l", lty="dashed", col="black")
+
+lines(0:9, g_SOBI_F[[3]], type="l", lty="dotted", col="green")
+lines(0:9, phi_SOBI[[3]], type="l", lty="dotted", col="red")
+lines(0:9, f_SOBI_F[[3]], type="l", lty="dotted", col="black")
+
+plot(0:9, g_AMUSE_S[[1]], type="l", lty="solid", ylim=c(0,0.25), col="green",
+     main="AMUSE stationary", xlab="Component", ylab="Criterion")
+lines(0:9, phi_AMUSE[[1]], type="l", lty="solid", col="red")
+lines(0:9, f_AMUSE_S[[1]], type="l", lty="solid", col="black")
+
+lines(0:9, g_AMUSE_S[[2]], type="l", lty="dashed", col="green")
+lines(0:9, phi_AMUSE[[2]], type="l", lty="dashed", col="red")
+lines(0:9, f_AMUSE_S[[2]], type="l", lty="dashed", col="black")
+
+lines(0:9, g_AMUSE_S[[3]], type="l", lty="dotted", col="green")
+lines(0:9, phi_AMUSE[[3]], type="l", lty="dotted", col="red")
+lines(0:9, f_AMUSE_S[[3]], type="l", lty="dotted", col="black")
+
+plot(0:9, g_AMUSE_F[[1]], type="l", lty="solid", ylim=c(0,0.25), col="green",
+     main="AMUSE fixed", xlab="Component", ylab="")
+lines(0:9, phi_AMUSE[[1]], type="l", lty="solid", col="red")
+lines(0:9, f_AMUSE_F[[1]], type="l", lty="solid", col="black")
+
+lines(0:9, g_AMUSE_F[[2]], type="l", lty="dashed", col="green")
+lines(0:9, phi_AMUSE[[2]], type="l", lty="dashed", col="red")
+lines(0:9, f_AMUSE_F[[2]], type="l", lty="dashed", col="black")
+
+lines(0:9, g_AMUSE_F[[3]], type="l", lty="dotted", col="green")
+lines(0:9, phi_AMUSE[[3]], type="l", lty="dotted", col="red")
+lines(0:9, f_AMUSE_F[[3]], type="l", lty="dotted", col="black")
+
+par(fig = c(0, 1, 0, 1), new = TRUE, mar = c(0, 0, 0, 3))
+
+plot.new()
+
+legend(x = 1.12, y = 0.65, legend = expression(f(k), phi(k), g(k)),
+  title = "Criterion", col = c("black", "red", "green"), lty = 1,
+  xjust = 0.5, yjust = 0.5, bty = "n", xpd = NA, cex = 1.2
+)
+
+legend(
+  x = 1.12, y = 0.45, legend = expression("L=10", "L=20", "L=40"),
+  title = "Block length", col = c("black", "black", "black"), lty = c("solid", "dashed", "dotted"),
+  xjust = 0.5, yjust = 0.5, bty = "n", xpd = NA, cex = 1.2
+)
