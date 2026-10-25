@@ -1,0 +1,10 @@
+Task2/R/output/**/*.png
+Task2/R/output/**/*.txt
+
+Task2_*.aux
+Task2_*.fdb_latexmk
+Task2_*.fls
+Task2_*.log
+Task2_*.out
+Task2_*.synctex.gz
+Task2_*.toc

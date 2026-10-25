@@ -1,8 +1,23 @@
 # C_label_switching.R
 # Task 2 Part C: 
 
+# Set working directory to the script's location for reproducibility.
+get_script_dir <- function() {
+  args <- commandArgs(trailingOnly = FALSE)
+  file_arg <- grep("^--file=", args, value = TRUE)
+  if (length(file_arg) > 0) {
+    return(dirname(normalizePath(sub("^--file=", "", file_arg))))
+  }
+  if (!is.null(sys.function(1))) {
+    ofile <- sys.frame(1)$ofile
+    if (!is.null(ofile)) return(dirname(normalizePath(ofile)))
+  }
+  return(getwd())
+}
+setwd(get_script_dir())
+
 # The file looks at label switching and how to identify the two component Gaussian mixture.
-# The likelihood and posterior are the same even if the labels are swithced.
+# The likelihood and posterior are the same even if the labels are switched.
 # (mu1, mu2, pi)  <->  (mu2, mu1, 1 - pi)
 # The posterior has at least two symmetric modes.
 # A Gibbs sampler can move between them.
@@ -61,7 +76,7 @@ plot(fits$right1$samples[, "mu2"], type = "l", col = "red", main = "mu2, chain s
 par(mfrow = c(1, 1))
 dev.off()
 # Joint scatter of (mu1, mu2).
-# If there wasn't label switching, there would only be 1 clster.
+# If there wasn't label switching, there would only be 1 cluster.
 png("output/label_switching/figures/label_switching_joint.png", width = 700, height = 700)
 plot(draws[, "mu1"], draws[, "mu2"], pch = 20, cex = 0.3,
      col = rgb(0, 0, 0, 0.05),
@@ -96,7 +111,7 @@ invariants <- cbind(
 print(round(summary_table(invariants), 3))
 
 # After processing to get rid of label switching:
-# In every iteration where mu1 > mu2, swap the meants and make 1 - pi instead of pi.
+# In every iteration where mu1 > mu2, swap the means and make 1 - pi instead of pi.
 
 swap <- draws[, "mu1"] > draws[, "mu2"]
 draws_ordered <- draws
@@ -109,7 +124,7 @@ print(round(summary_table(draws_ordered), 3))
 
 
 # Visual comparison before and after ordering
-# Before ordering, m1 is splited into two hills, after, it has only one.
+# Before ordering, m1 is split into two hills, after, it has only one.
 png("output/label_switching/figures/label_switching_before_after.png", width = 1000, height = 500)
 par(mfrow = c(1, 2))
 plot(density(draws[, "mu1"]), col = "blue", lwd = 2,

@@ -1,13 +1,27 @@
 # B_simulation_study.R
 # Task 2 Part B:
 
+# Set working directory to the script's location for reproducibility.
+get_script_dir <- function() {
+  args <- commandArgs(trailingOnly = FALSE)
+  file_arg <- grep("^--file=", args, value = TRUE)
+  if (length(file_arg) > 0) {
+    return(dirname(normalizePath(sub("^--file=", "", file_arg))))
+  }
+  if (!is.null(sys.function(1))) {
+    ofile <- sys.frame(1)$ofile
+    if (!is.null(ofile)) return(dirname(normalizePath(ofile)))
+  }
+  return(getwd())
+}
+setwd(get_script_dir())
 # This is a simulation for the two-component Gaussian mixture model.
 # This file makes two synthetic datasets:
 # One has two bell curves far apart (clearly separated).
 # One has overlapping bell curves (substantially overlapping).
 # Runs the Gibbs sampler several times on each dataset, starting from different places.
 # Produces trace plots, density plots, autocorrelation plots, and a few numeric summaries.
-
+sink("output/simulation/console_output.txt")
 source("A_gibbs_sampler.R")
 library(coda)
 set.seed(2026)
@@ -154,3 +168,4 @@ hist(p1_over, breaks = 20, col = "lightpink", border = "white",
      xlab = "posterior P(component 1)")
 dev.off()
 cat("\nRun complete, figures are in output/simulation/figures/.\n")
+sink()

@@ -1,6 +1,20 @@
 # D_Application.R
 # Task 2 Part D: Faithful dataset
 
+# Set working directory to the script's location for reproducibility.
+get_script_dir <- function() {
+  args <- commandArgs(trailingOnly = FALSE)
+  file_arg <- grep("^--file=", args, value = TRUE)
+  if (length(file_arg) > 0) {
+    return(dirname(normalizePath(sub("^--file=", "", file_arg))))
+  }
+  if (!is.null(sys.function(1))) {
+    ofile <- sys.frame(1)$ofile
+    if (!is.null(ofile)) return(dirname(normalizePath(ofile)))
+  }
+  return(getwd())
+}
+setwd(get_script_dir())
 # This script fits a two-component Gaussian mixture to the Old Faithful eruption data.
 # It relabels the posterior draws to keep mu1 < mu2, checks convergence,
 # summarizes the parameters, and examines uncertainty in the component allocations.
@@ -12,7 +26,7 @@ set.seed(2026)
 
 sink("output/faithful/console_output.txt")
 
-# This loads the eruption-duration data into a varaible
+# This loads the eruption-duration data into a variable
 data(faithful)
 y <- faithful$eruptions
 
@@ -39,7 +53,7 @@ chains <- list(
 )
 
 # Checks whether the means of component 1 are larger than component 2
-# If component 1 means are greater than component 2, the means, lebels and related data is also swapped
+# If component 1 means are greater than component 2, the means, labels and related data is also swapped
 for (k in seq_along(chains)) {
   samples <- chains[[k]]$samples
   swap <- samples[, "mu1"] > samples[, "mu2"]
@@ -54,7 +68,7 @@ for (k in seq_along(chains)) {
 }
 
 # Check convergence and effective sample sizes across chains.
-# Takes the parameters that were samples from each of the chains and formats it
+# Takes the parameters that were sampled from each of the chains and formats it
 # in a way that is usable by coda (coda mcmc object).
 mcmc_runs <- mcmc.list(lapply(chains, function(fit) mcmc(fit$samples)))
 cat("\nGelman-Rubin convergence diagnostics\n")
@@ -72,14 +86,14 @@ summary_table <- function(m) {
   rbind(mean = means, `2.5%` = ci[1, ], `97.5%` = ci[2, ])
 }
 
-# Prints all the summaries, roudned to three decimal points.
+# Prints all the summaries, rounded to three decimal points.
 cat("\nPosterior summaries\n")
 print(round(summary_table(all_draws), 3))
 
-# Creates a rwo-panel png image showing fitted mixture and allocation uncertainty.
-# Plots a histogram of the eruption durations, where it si scaled as a density in
+# Creates a two-panel png image showing fitted mixture and allocation uncertainty.
+# Plots a histogram of the eruption durations, where it is scaled as a density in
 # order to be compared with density curves.
-# Means, weights and stanadard deviations are calculated and fitted
+# Means, weights and standard deviations are calculated and fitted
 png("output/faithful/figures/faithful_mixture_and_allocations.png",
     width = 1100, height = 500)
 par(mfrow = c(1, 2))
@@ -114,5 +128,5 @@ abline(h = 0.5, lty = 2, col = "gray")
 par(mfrow = c(1, 1))
 dev.off()
 
-cat("\ Application complete. Graph saved in output/faithful/figures/.\n")
+cat("\nApplication complete. Graph saved in output/faithful/figures/.\n")
 sink()
