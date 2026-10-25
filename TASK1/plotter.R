@@ -1,18 +1,18 @@
 library(ggplot2)
 
 files = list(
-  "/home/elmer/R/computational_statistics/group_work/TASK1/output/SOBI_S_10_40_500.csv",
-  "/home/elmer/R/computational_statistics/group_work/TASK1/output/SOBI_F_10_40_500.csv",
-  "/home/elmer/R/computational_statistics/group_work/TASK1/output/AMUSE_S_10_40_500.csv",
-  "/home/elmer/R/computational_statistics/group_work/TASK1/output/AMUSE_F_10_40_500.csv",
-  "/home/elmer/R/computational_statistics/group_work/TASK1/output/SOBI_S_10_40_1000.csv",
-  "/home/elmer/R/computational_statistics/group_work/TASK1/output/SOBI_F_10_40_1000.csv",
-  "/home/elmer/R/computational_statistics/group_work/TASK1/output/AMUSE_S_10_40_1000.csv",
-  "/home/elmer/R/computational_statistics/group_work/TASK1/output/AMUSE_F_10_40_1000.csv",
-  "/home/elmer/R/computational_statistics/group_work/TASK1/output/SOBI_S_10_40_2000.csv",
-  "/home/elmer/R/computational_statistics/group_work/TASK1/output/SOBI_F_10_40_2000.csv",
-  "/home/elmer/R/computational_statistics/group_work/TASK1/output/AMUSE_S_10_40_2000.csv",
-  "/home/elmer/R/computational_statistics/group_work/TASK1/output/AMUSE_F_10_40_2000.csv"
+  "output/SOBI_S_10_40_500.csv",
+  "output/SOBI_F_10_40_500.csv",
+  "output/AMUSE_S_10_40_500.csv",
+  "output/AMUSE_F_10_40_500.csv",
+  "output/SOBI_S_10_40_1000.csv",
+  "output/SOBI_F_10_40_1000.csv",
+  "output/AMUSE_S_10_40_1000.csv",
+  "output/AMUSE_F_10_40_1000.csv",
+  "output/SOBI_S_10_40_2000.csv",
+  "output/SOBI_F_10_40_2000.csv",
+  "output/AMUSE_S_10_40_2000.csv",
+  "output/AMUSE_F_10_40_2000.csv"
 )
 
 names = list(
@@ -69,7 +69,7 @@ results$method_label = factor(
   levels = method_levels
 )
 
-ggplot(results, aes(x = method_label, fill = factor(q_hat, levels = 0:9))) +
+p = ggplot(results, aes(x = method_label, fill = factor(q_hat, levels = 0:9))) +
   geom_bar() +
   coord_flip() +
   facet_grid(. ~ T) +
@@ -78,3 +78,4 @@ ggplot(results, aes(x = method_label, fill = factor(q_hat, levels = 0:9))) +
   theme(legend.position = "right", panel.grid.minor = element_blank())
 
 
+ggsave("q_bar_chart.pdf", plot = p, width = 11.38, height = 4)

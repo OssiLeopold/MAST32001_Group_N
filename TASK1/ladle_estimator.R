@@ -211,7 +211,7 @@ for (l in 1:3){
     #X = generate_data(T)
 
     # Read in data
-    X = read.table("/home/elmer/R/computational_statistics/group_work/TASK1/time_series_data.txt", header = FALSE)
+    X = read.table("time_series_data.txt", header = FALSE)
     
     # Standardize data.
     X_st = standardize_data(X)
