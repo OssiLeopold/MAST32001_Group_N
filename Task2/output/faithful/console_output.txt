@@ -1,0 +1,25 @@
+
+Gelman-Rubin convergence diagnostics
+Potential scale reduction factors:
+
+       Point est. Upper C.I.
+mu1             1          1
+mu2             1          1
+pi              1          1
+sigma2          1          1
+
+Multivariate psrf
+
+1
+
+Effective sample sizes
+     mu1      mu2       pi   sigma2 
+11147.59 11502.87 11552.19 11105.98 
+
+Posterior summaries
+        mu1   mu2    pi sigma2
+mean  2.048 4.297 0.361  0.141
+2.5%  1.973 4.240 0.305  0.119
+97.5% 2.126 4.352 0.419  0.167
+
+Old Faithful application complete. Figure written to output/faithful/figures/.

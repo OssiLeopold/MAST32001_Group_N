@@ -1,0 +1,20 @@
+
+label switching ignored summaries
+         mu1    mu2    pi sigma2
+mean   0.012  0.012 0.500  0.978
+2.5%  -2.536 -2.539 0.468  0.892
+97.5%  2.563  2.563 0.531  1.069
+
+not depending on label ordering
+      sigma2 dist_means lower_mean upper_mean
+mean   0.978      4.952     -2.464      2.488
+2.5%   0.892      4.831     -2.551      2.399
+97.5%  1.069      5.075     -2.377      2.577
+
+fixed after processing
+         mu1   mu2    pi sigma2
+mean  -2.464 2.488 0.500  0.978
+2.5%  -2.551 2.399 0.468  0.892
+97.5% -2.377 2.577 0.531  1.069
+
+Label switching part complete. Figures written to output/label_switching/figures/.
